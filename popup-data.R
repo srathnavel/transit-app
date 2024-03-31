@@ -1,11 +1,8 @@
 ## Creating popup data
 
 library(tidyverse)
-library(tigris)
-library(tidycensus)
-library(mapview)
-library(leaflet)
-library(leafpop)
+library(glue)
+library(htmltools)
 
 load("data/transport-dataset.rda")
 

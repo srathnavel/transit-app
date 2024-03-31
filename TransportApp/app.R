@@ -19,7 +19,7 @@ library(sp)
 load("data/transport-dataset.rda")
 load("data/popup.rda")
 
-# Define UI for application that draws a histogram
+# Define UI for application
 ui <- fluidPage(
 
     # Application title
@@ -69,7 +69,7 @@ ui <- fluidPage(
     )
 )
 
-# Define server logic required to draw a histogram
+# Define server logic required for a leaflet object
 server <- function(input, output) {
   
     output$map <- renderLeaflet({
