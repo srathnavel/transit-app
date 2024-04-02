@@ -16,8 +16,8 @@ library(mapview)
 library(leaflet)
 library(sp)
 
-load("data/transport-dataset.rda")
-load("data/popup.rda")
+load("data/map_data.rda")
+load("data/popup_data.rda")
 
 # Define UI for application
 ui <- fluidPage(
