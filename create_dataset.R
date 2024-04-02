@@ -38,9 +38,11 @@ if (current_source == most_recent_acs5){
   ## need to check if only 1
   list.files(here(temp_path), pattern = "\\.zip$")[1]
   
+  # get unique variable naming convention
   nhgis_code <- get_metadata_nhgis(dataset = most_recent_acs5, data_table = "B08301")$nhgis_code %>%
     janitor::make_clean_names()
   
+  # read in extract
   nhgis_dat <- read_nhgis(paste0(temp_path, "/", list.files(here(temp_path), pattern = "\\.zip$")[1])) %>%
     janitor::clean_names() 
   
@@ -62,7 +64,7 @@ if (current_source == most_recent_acs5){
     select(-matches("e\\d{3}$")) %>%
     mutate_at(vars(ends_with("_pct")), ~round(., digits = 1))
   
-  ##
+  # create datasets for each city and add spatial geometries
   transport_chi <- tracts(state = "17", county = "031", year = str_sub(most_recent_acs5, 6, 9)) %>%
     janitor::clean_names() %>%
     select(geoid, geometry) %>%
@@ -81,9 +83,12 @@ if (current_source == most_recent_acs5){
     left_join(nhgis_dat %>% filter(str_detect(geoid, "^06037")),
               by = "geoid")
   
+  # update data source
   current_source <- most_recent_acs5
   
+  # save to same file for app access
   save(transport_chi, transport_la, transport_nyc, current_source, file = "data/map_data.rda")
   
-  ## need to delete extract and unlink path
+  ## delete extract and remove path
+  unlink(temp_path, recursive = TRUE)
 }
