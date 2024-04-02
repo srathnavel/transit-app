@@ -25,7 +25,7 @@ ui <- fluidPage(
     sidebarLayout(
         sidebarPanel(
           h4("About this Dashboard:"),
-          p("Select a city and a mode of transport below to see the distribution of people who used that mode of transport to get to work around urban centers."),
+          p("Select a city and a mode of transport to see the distribution of people who used that mode of transport to get to work around urban centers. Click on a tract to view median income."),
           
           # select a city to determine transport dataset
           radioButtons("city", 
@@ -59,10 +59,9 @@ ui <- fluidPage(
         mainPanel(
           leafletOutput("map"),
           p(),
-          p("Data is from the ", str_sub(current_source, 1, 4), "-", str_sub(current_source, 6, 9), "ACS 5-year survey, accessed using IPUMS NHGIS at", 
-            a("www.nhgis.org.", href = "https://data2.nhgis.org/main"), 
-            "See full project code on",
-            a("GitHub.", href = "https://github.com/srathnavel/transitapp")),
+          p("Data is from tables B08301 and B19013 of the", str_sub(current_source, 1, 4), "-", str_sub(current_source, 6, 9), "ACS 5-year survey. It is accessed and updated using", 
+            a("IPUMS NHGIS", href = "https://data2.nhgis.org/main"), "and the IPUMS API. See", 
+            a("GitHub", href = "https://github.com/srathnavel/transitapp"), "for project code."),
         )
     )
 )
