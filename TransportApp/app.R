@@ -9,12 +9,8 @@
 
 library(shiny)
 library(tidyverse)
-library(ggplot2)
-library(tigris)
-library(tidycensus)
 library(mapview)
 library(leaflet)
-library(sp)
 
 load("data/map_data.rda")
 load("data/popup_data.rda")
@@ -28,8 +24,8 @@ ui <- fluidPage(
     # Sidebar with an about section and options 
     sidebarLayout(
         sidebarPanel(
-          h4("About this dashboard:"),
-          p("Select a city and a mode of transport below to see how people who used that mode of transport to get to work between 2015 and 2019 were distributed around urban centers."),
+          h4("About this Dashboard:"),
+          p("Select a city and a mode of transport below to see the distribution of people who used that mode of transport to get to work around urban centers."),
           
           # select a city to determine transport dataset
           radioButtons("city", 
@@ -52,19 +48,21 @@ ui <- fluidPage(
                       selected = "Car/Van/Truck"),
           
           # select a type of map to select basemap for the visualization
-          radioButtons("map_type", 
-                       label = "Select a Base Map", 
-                       choices = c("Cartographic Positron",
-                                   "Open Street Map"),
-                       selected = "Cartographic Positron"),
+          # radioButtons("map_type",
+          #              label = "Select a Base Map",
+          #              choices = c("Cartographic Positron",
+          #                          "Open Street Map"),
+          #              selected = "Cartographic Positron"),
         ),
 
         # Show the map
         mainPanel(
           leafletOutput("map"),
           p(),
-          p(strong("Data from:"), "IPUMS NHGIS, University of Minnesota at", a("www.nhgis.org",
-                                                                              href = "https://data2.nhgis.org/main")),
+          p("Data is from the ", str_sub(current_source, 1, 4), "-", str_sub(current_source, 6, 9), "ACS 5-year survey, accessed using IPUMS NHGIS at", 
+            a("www.nhgis.org.", href = "https://data2.nhgis.org/main"), 
+            "See full project code on",
+            a("GitHub.", href = "https://github.com/srathnavel/transitapp")),
         )
     )
 )
@@ -97,16 +95,16 @@ server <- function(input, output) {
                            "New York City" = popup_nyc)
       
       # choose mapview based on input$map_type from ui.R
-      basemap <- switch(input$map_type,
-                        "Cartographic Positron" = "CartoDB.Positron",
-                        "Open Street Map" = "OpenStreetMap")
+      # basemap <- switch(input$map_type,
+      #                   "Cartographic Positron" = "CartoDB.Positron",
+      #                   "Open Street Map" = "OpenStreetMap")
       
       # plot map in mapview
       mapview(transport, 
               zcol = fill_var, 
               legend = TRUE,
               layer.name = "% of commuters",
-              map.types = basemap,
+              map.types = "CartoDB.Positron",
               popup = popup_city)@map
     })
 }
