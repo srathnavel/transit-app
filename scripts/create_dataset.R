@@ -7,11 +7,11 @@ library(here)
 library(tigris)
 
 # load data currently in use and current_source
-if (file.exists("data/map_data.rda")){
+if (file.exists("data/map_data.rda")) {
   
   load("data/map_data.rda")
   
-} else {
+} else { # haven't run script before
   
   current_source <- "non-existent"
   
@@ -23,19 +23,16 @@ most_recent_acs5 <- get_metadata_nhgis("datasets") %>%
   filter(group == max(group)) %>%
   pull(name)
 
-# if needed, update data source
-if (length(most_recent_acs5) != 1){
+# if statement to update data source
+if (length(most_recent_acs5) != 1) { # error
   
-  # error
-  print("Check for changes to metadata structure.")
+  print("Check API call.")
   
-} else if (current_source == most_recent_acs5){
+} else if (current_source == most_recent_acs5){ # don't update data
   
-  # don't update data
   print("Already up to date!")
   
-} else {
-  # data needs to be updated
+} else { # data needs to be updated
   
   # define a new extract for the most recent data release
   extract <- define_extract_nhgis(  
@@ -54,35 +51,35 @@ if (length(most_recent_acs5) != 1){
   
   download_extract(extract, temp_path)
   
+  # checks that only one extract in temporary folder
+  # if (length(list.files(here(temp_path), pattern = "\\.zip$")) != 1) {
+  #   
+  #   print("Extract download issue: more than one extract in folder")
+  #   break
+  #   
+  # }
+  
+  # read extract into R
+  nhgis_dat <- read_nhgis(paste0(temp_path, "/", list.files(here(temp_path), pattern = "\\.zip$")[1])) %>%
+    janitor::clean_names() 
+  
   # get nhgis variable naming convention (unique for table and year)
+  # need naming convention to access variables in the dataset
   nhgis_code_tr <- get_metadata_nhgis(dataset = most_recent_acs5, data_table = "B08301")$nhgis_code %>%
     janitor::make_clean_names()
   
   nhgis_code_inc <- get_metadata_nhgis(dataset = most_recent_acs5, data_table = "B19013")$nhgis_code %>%
     janitor::make_clean_names()
   
-  # need to check if only 1 !!!!!
-  if (length(list.files(here(temp_path), pattern = "\\.zip$")) != 1) {
-    
-    print("Extract download issue: more than one extract in folder")
-    break
-    
-  }
-  
-  # read in extract
-  nhgis_dat <- read_nhgis(paste0(temp_path, "/", list.files(here(temp_path), pattern = "\\.zip$")[1])) %>%
-    janitor::clean_names() 
-  
-  # represent each type of transport as a share of total
-  # get percentage of people in each census tract using each form of transport
   nhgis_dat <- nhgis_dat %>%
     mutate(geoid = paste0(statea, countya, tracta)) %>%
     # filter to only LA, NYC, and Chicago
     filter(str_detect(geoid, "^06037") | str_detect(geoid, "^36061") | str_detect(geoid, "^17031")) %>%
     select(year, state, county, geoid, name_e, matches("e\\d{3}$")) %>%
     rename_with(~ str_remove(., nhgis_code_tr), everything()) %>%
-    ## will need to update if variable definitions change
     rename(median_income = sym(paste0(nhgis_code_inc, "e001"))) %>%
+    # want to represent commuters using each type of transport as a share of total
+    # get percentage of people in each census tract using each form of transport
     mutate(drive_pct = ((e003*100)/e001),
            bus_pct = ((e011*100)/e001),
            rail_pct = (((e012 + e013 + e014)*100)/e001),
@@ -96,7 +93,7 @@ if (length(most_recent_acs5) != 1){
     select(-matches("e\\d{3}$")) %>%
     mutate_at(vars(ends_with("_pct")), ~round(., digits = 1))
   
-  # create datasets for each city and add spatial geometries from relevant year
+  # create datasets for each city with tract geometries from relevant year
   transport_chi <- tracts(state = "17", county = "031", year = str_sub(most_recent_acs5, 6, 9)) %>%
     janitor::clean_names() %>%
     select(geoid, geometry) %>%
@@ -115,7 +112,7 @@ if (length(most_recent_acs5) != 1){
     right_join(nhgis_dat %>% filter(str_detect(geoid, "^06037")),
               by = "geoid")
   
-  # update data source
+  # reflect updated data source
   current_source <- most_recent_acs5
   
   # save city-specific datasets to same file for app access

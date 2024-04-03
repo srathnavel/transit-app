@@ -5,9 +5,7 @@ account: shruti820
 server: shinyapps.io
 hostUrl: https://api.shinyapps.io/v1
 appId: 5854949
-bundleId: 5689422
+bundleId: 8447857
 url: https://shruti820.shinyapps.io/TransportApp/
-when: 1647399219.90731
-lastSyncTime: 1647399219.90731
 asMultiple: FALSE
 asStatic: FALSE
