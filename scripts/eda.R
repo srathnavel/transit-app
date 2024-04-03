@@ -12,6 +12,13 @@ load("TransportApp/data/map_data.rda")
 
 #### mapping median income ####
 
+transport_chi %>%
+  ggplot() +
+  geom_sf(aes(fill = total)) +
+  scale_fill_gradient(low = "white", high = "blue") +
+  labs("Total workers") +
+  theme_void()
+
 #### correlations between median income and transport type ####
 
 cor(transport_chi$median_income, transport_chi$wfh_pct, method = "pearson", use = "complete.obs")
