@@ -7,9 +7,9 @@ library(here)
 library(tigris)
 
 # load data currently in use and current_source
-if (file.exists("data/map_data.rda")) {
+if (file.exists("TransportApp/data/map_data.rda")) {
   
-  load("data/map_data.rda")
+  load("TransportApp/data/map_data.rda")
   
 } else { # haven't run script before
   
@@ -41,14 +41,12 @@ if (length(most_recent_acs5) != 1) { # error
                        data_tables = c("B08301", "B19013"),    
                        geog_levels = "tract"))
   
-  # create a temporary folder for the new extract
-  temp_path <- here(paste0("extract_data/"))
-  dir.create(temp_path)
-  
-  # submit and download extract
+  # submit and download extract to a temporary folder
   extract <- submit_extract(extract) %>%
     wait_for_extract()
-  
+
+  temp_path <- here(paste0("extract_data/"))
+  dir.create(temp_path)
   download_extract(extract, temp_path)
   
   # checks that only one extract in temporary folder
@@ -63,14 +61,14 @@ if (length(most_recent_acs5) != 1) { # error
   nhgis_dat <- read_nhgis(paste0(temp_path, "/", list.files(here(temp_path), pattern = "\\.zip$")[1])) %>%
     janitor::clean_names() 
   
-  # get nhgis variable naming convention (unique for table and year)
-  # need naming convention to access variables in the dataset
+  # get nhgis table code (unique for table and year)
+  # need this naming convention to access variables in the dataset
   nhgis_code_tr <- get_metadata_nhgis(dataset = most_recent_acs5, data_table = "B08301")$nhgis_code %>%
     janitor::make_clean_names()
   
   nhgis_code_inc <- get_metadata_nhgis(dataset = most_recent_acs5, data_table = "B19013")$nhgis_code %>%
     janitor::make_clean_names()
-  
+
   nhgis_dat <- nhgis_dat %>%
     mutate(geoid = paste0(statea, countya, tracta)) %>%
     # filter to only LA, NYC, and Chicago
@@ -78,9 +76,9 @@ if (length(most_recent_acs5) != 1) { # error
     select(year, state, county, geoid, name_e, matches("e\\d{3}$")) %>%
     rename_with(~ str_remove(., nhgis_code_tr), everything()) %>%
     rename(median_income = sym(paste0(nhgis_code_inc, "e001"))) %>%
-    # want to represent commuters using each type of transport as a share of total
     # get percentage of people in each census tract using each form of transport
-    mutate(drive_pct = ((e003*100)/e001),
+    mutate(total = e001,
+           drive_pct = ((e003*100)/e001),
            bus_pct = ((e011*100)/e001),
            rail_pct = (((e012 + e013 + e014)*100)/e001),
            ferry_pct = ((e015*100)/e001),
@@ -89,7 +87,7 @@ if (length(most_recent_acs5) != 1) { # error
            bicycle_pct = ((e018*100)/e001),
            walk_pct = ((e019*100)/e001),
            wfh_pct = ((e021*100)/e001)) %>%
-    filter(e001 > 0) %>%
+    filter(total > 0) %>%
     select(-matches("e\\d{3}$")) %>%
     mutate_at(vars(ends_with("_pct")), ~round(., digits = 1))
   
@@ -112,13 +110,11 @@ if (length(most_recent_acs5) != 1) { # error
     right_join(nhgis_dat %>% filter(str_detect(geoid, "^06037")),
               by = "geoid")
   
-  # reflect updated data source
   current_source <- most_recent_acs5
   
-  # save city-specific datasets to same file for app access
+  # save to same file for app access
   save(transport_chi, transport_la, transport_nyc, current_source, file = "TransportApp/data/map_data.rda")
   
   # delete extract and remove folder
   unlink(temp_path, recursive = TRUE)
 }
-
