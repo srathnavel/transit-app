@@ -26,7 +26,7 @@ transport_chi %>%
 
 #### correlations between median income and transport type ####
 
-# get list of transit type variables
+# get all transit type usage variables
 transit_types <- colnames(st_drop_geometry(transport_chi) %>% 
                             select(ends_with("pct")))
 
@@ -73,7 +73,7 @@ transport_nyc %>%
 
 #### exploring neighbor characteristics ####
 
-# helper function
+# helper function that removes a specified something (self) from a vector
 remove_self <- function(self, vector) {
   mapply(function(idx, n) n[n != idx], idx = self, n = vector, SIMPLIFY = FALSE)
 }
@@ -88,7 +88,6 @@ chi_neighbors <- transport_chi %>%
   # get median incomes for each neighbor
   mutate(median_incomes = map(neighbors, ~transport_chi$median_income[.x])) %>%
   rowwise() %>%
-  # find the average median income across all neighbors
   mutate(mean_neighbor_income = mean(median_incomes, na.rm = TRUE)) %>%
   # express differences between tract median income and mean of neighbor median incomes
   mutate(abs_difference = abs(mean_neighbor_income - median_income)) %>%
