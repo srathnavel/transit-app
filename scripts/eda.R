@@ -14,14 +14,14 @@ transport_chi %>%
   ggplot() +
   geom_sf(aes(fill = total)) +
   scale_fill_gradient(low = "white", high = "blue") +
-  labs("Total workers") +
+  ggtitle("Total workers in B08301", "Cook County") +
   theme_void()
 
 transport_chi %>%
   ggplot() +
   geom_sf(aes(fill = median_income)) +
   scale_fill_gradient(low = "white", high = "blue") +
-  labs("Total workers") +
+  ggtitle("Median income in B19013", "Cook County") +
   theme_void()
 
 #### correlations between median income and transport type ####
@@ -30,8 +30,7 @@ transport_chi %>%
 transit_types <- colnames(st_drop_geometry(transport_chi) %>% 
                             select(ends_with("pct")))
 
-# write a function that prints correlation between tract median income
-# and share of people using transit type for each transit type
+# for each transit type print correlation between tract median income and % transit usage
 income_corr <- function(df) {
   for (type in transit_types) {
     
@@ -47,7 +46,7 @@ income_corr <- function(df) {
 income_corr(transport_chi)
 income_corr(transport_nyc)
 
-# plotting lines of best fit
+# plot lines of best fit for strong correlations
 transport_chi %>%
   ggplot() +
   geom_smooth(aes(x = wfh_pct, y = median_income, color = "wfh"), method = "lm", se = FALSE) +
@@ -55,12 +54,10 @@ transport_chi %>%
   geom_smooth(aes(x = bus_pct, y = median_income, color = "bus"), method = "lm", se = FALSE) +
   xlab("Transit usage") +
   ylab("Median Income") +
+  # census reports median incomes above 250000 as 250001
   ylim(0, 250001) +
   ggtitle("Tracts in Cook County") +
   theme_bw()
-
-# strong negative correlation with both rail and bus
-# only county here with a positive relationship between median income and taxicab usage
 
 transport_nyc %>%
   ggplot() +
@@ -81,7 +78,7 @@ remove_self <- function(self, vector) {
   mapply(function(idx, n) n[n != idx], idx = self, n = vector, SIMPLIFY = FALSE)
 }
 
-# using st_intersects to identify income characteristics of neighboring tracts
+# identify income characteristics of neighboring tracts
 chi_neighbors <- transport_chi %>%
   rowid_to_column("index") %>%
   # find neighbors
@@ -115,13 +112,15 @@ chi_neighbors %>%
 
 for (type in transit_types) {
   
-  # find the correlation between pct difference from neighbor income and share of people using transit type
+  # correlation between pct difference from neighbor income and transit type usage
   corr <- cor(chi_neighbors$pct_difference, st_drop_geometry(chi_neighbors) %>% pull(sym(type)), 
               method = "pearson", use = "complete.obs")
   
   print(paste0("Correlation with pct_difference: ", type, ", ", corr))
+  
 }
 
+# plot variables with strong correlations
 chi_neighbors %>%
   ggplot() +
   geom_point(aes(x = bus_pct, y = pct_difference)) +
