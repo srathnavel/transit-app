@@ -4,13 +4,11 @@
 library(tidyverse)
 library(ggplot2)
 library(sf)
-library(mapview)
-library(leaflet)
 
 # load data
 load("TransportApp/data/map_data.rda")
 
-#### mapping median income ####
+#### preliminary mapping totals and income ####
 
 transport_chi %>%
   ggplot() +
@@ -19,19 +17,62 @@ transport_chi %>%
   labs("Total workers") +
   theme_void()
 
+transport_chi %>%
+  ggplot() +
+  geom_sf(aes(fill = median_income)) +
+  scale_fill_gradient(low = "white", high = "blue") +
+  labs("Total workers") +
+  theme_void()
+
 #### correlations between median income and transport type ####
 
-cor(transport_chi$median_income, transport_chi$wfh_pct, method = "pearson", use = "complete.obs")
-cor(transport_nyc$median_income, transport_nyc$wfh_pct, method = "pearson", use = "complete.obs")
-cor(transport_la$median_income, transport_la$wfh_pct, method = "pearson", use = "complete.obs")
+# get list of transit type variables
+transit_types <- colnames(st_drop_geometry(transport_chi) %>% 
+                            select(ends_with("pct")))
 
-## REMEMBER TO TALK IN COUNTY TERMS
+# write a function that prints correlation between tract median income
+# and share of people using transit type for each transit type
+income_corr <- function(df) {
+  for (type in transit_types) {
+    
+    corr <- cor(df$median_income, st_drop_geometry(df) %>% pull(sym(type)), 
+                method = "pearson", use = "complete.obs")
+    
+    print(paste0(deparse(substitute(df)), # prints dataframe name for easy id in console
+                 ": ", type, ", ", corr))
+    
+  }
+}
+
+income_corr(transport_chi)
+income_corr(transport_nyc)
+
+# plotting lines of best fit
+transport_chi %>%
+  ggplot() +
+  geom_smooth(aes(x = wfh_pct, y = median_income, color = "wfh"), method = "lm", se = FALSE) +
+  geom_smooth(aes(x = rail_pct, y = median_income, color = "rail"), method = "lm", se = FALSE) +
+  geom_smooth(aes(x = bus_pct, y = median_income, color = "bus"), method = "lm", se = FALSE) +
+  xlab("Transit usage") +
+  ylab("Median Income") +
+  ylim(0, 250001) +
+  ggtitle("Tracts in Cook County") +
+  theme_bw()
+
+# strong negative correlation with both rail and bus
+# only county here with a positive relationship between median income and taxicab usage
 
 transport_nyc %>%
   ggplot() +
-  geom_point(aes(x = wfh_pct, y = median_income)) +
-  geom_smooth(aes(x = drive_pct, y = median_income), formula = (y ~ x))
-
+  geom_smooth(aes(x = wfh_pct, y = median_income, color = "wfh"), method = "lm", se = FALSE) +
+  geom_smooth(aes(x = rail_pct, y = median_income, color = "rail"), method = "lm", se = FALSE) +
+  geom_smooth(aes(x = bus_pct, y = median_income, color = "bus"), method = "lm", se = FALSE) +
+  geom_smooth(aes(x = walk_pct, y = median_income, color = "walk"), method = "lm", se = FALSE) +
+  xlab("Transit usage") +
+  ylab("Median Income") +
+  ylim(0, 250001) +
+  ggtitle("Tracts in New York County") +
+  theme_bw()
 
 #### exploring neighbor characteristics ####
 
@@ -54,49 +95,47 @@ chi_neighbors <- transport_chi %>%
   mutate(mean_neighbor_income = mean(median_incomes, na.rm = TRUE)) %>%
   # express differences between tract median income and mean of neighbor median incomes
   mutate(abs_difference = abs(mean_neighbor_income - median_income)) %>%
-  mutate(pct_difference = 100*abs_difference/median_income)
+  mutate(pct_difference = 100*(mean_neighbor_income - median_income)/median_income) %>%
+  mutate(abs_pct_difference = 100*abs_difference/median_income)
 
-mean(chi_neighbors$pct_difference, na.rm = TRUE)
+mean(chi_neighbors$abs_pct_difference, na.rm = TRUE)
 
+# mapping difference between tract and neighbor median income
 chi_neighbors %>%
   ggplot() +
   geom_sf(aes(fill = pct_difference)) +
-  scale_fill_gradient(low = "white", high = "blue", limits = c(0, 100)) +
+  scale_fill_gradient2(low = "red", mid = "white", high = "blue", limits = c(-100, 100)) +
   theme_void()
 
-nyc_neighbors <- transport_nyc %>%
-  rowid_to_column("index") %>%
-  mutate(neighbors = st_intersects(geometry, transport_nyc)) %>%
-  mutate(neighbors = remove_self(index, neighbors)) %>%
-  mutate(median_incomes = map(neighbors, ~transport_nyc$median_income[.x])) %>%
-  rowwise() %>%
-  mutate(mean_neighbor_income = mean(median_incomes, na.rm = TRUE)) %>%
-  mutate(abs_difference = abs(mean_neighbor_income - median_income)) %>%
-  mutate(pct_difference = 100*abs_difference/median_income)
-
-mean(nyc_neighbors$pct_difference, na.rm = TRUE)
-
-nyc_neighbors %>%
+chi_neighbors %>%
   ggplot() +
-  geom_sf(aes(fill = pct_difference)) +
+  geom_sf(aes(fill = abs_pct_difference)) +
   scale_fill_gradient(low = "white", high = "blue", limits = c(0, 100)) +
   theme_void()
 
-# la_neighbors <- transport_la %>%
-#   rowid_to_column("index") %>%
-#   mutate(neighbors = st_intersects(geometry, transport_la)) %>%
-#   mutate(neighbors = remove_self(index, neighbors)) %>%
-#   mutate(median_incomes = map(neighbors, ~transport_la$median_income[.x])) %>%
-#   rowwise() %>%
-#   mutate(mean_neighbor_income = mean(median_incomes, na.rm = TRUE)) %>%
-#   mutate(abs_difference = abs(mean_neighbor_income - median_income)) %>%
-#   mutate(pct_difference = abs_difference/median_income)
-# 
-# mean(la_neighbors$pct_difference, na.rm = TRUE)
-# 
-# la_neighbors %>%
-#   ggplot() +
-#   geom_sf(aes(fill = pct_difference)) +
-#   scale_fill_gradient(low = "white", high = "blue", limits = c(0, 10)) +
-#   theme_void()
+for (type in transit_types) {
+  
+  # find the correlation between pct difference from neighbor income and share of people using transit type
+  corr <- cor(chi_neighbors$pct_difference, st_drop_geometry(chi_neighbors) %>% pull(sym(type)), 
+              method = "pearson", use = "complete.obs")
+  
+  print(paste0("Correlation with pct_difference: ", type, ", ", corr))
+}
 
+chi_neighbors %>%
+  ggplot() +
+  geom_point(aes(x = bus_pct, y = pct_difference)) +
+  geom_smooth(aes(x = bus_pct, y = pct_difference), method = "lm", se = FALSE) +
+  xlab("Bus usage") +
+  ylab("% difference between tract median income and \nmean neighbor income") +
+  ggtitle("Tracts in Cook County") +
+  theme_bw()
+
+chi_neighbors %>%
+  ggplot() +
+  geom_point(aes(x = wfh_pct, y = pct_difference)) +
+  geom_smooth(aes(x = wfh_pct, y = pct_difference), method = "lm", se = FALSE) +
+  xlab("Working from home rates") +
+  ylab("% difference between tract median income and \nmean neighbor income") +
+  ggtitle("Tracts in Cook County") +
+  theme_bw()
