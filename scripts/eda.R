@@ -73,19 +73,9 @@ transport_nyc %>%
 
 #### exploring neighbor characteristics ####
 
-# helper function that removes a specified something (self) from a vector
-remove_self <- function(self, vector) {
-  mapply(function(idx, n) n[n != idx], idx = self, n = vector, SIMPLIFY = FALSE)
-}
-
 # identify income characteristics of neighboring tracts
 chi_neighbors <- transport_chi %>%
-  rowid_to_column("index") %>%
-  # find neighbors
-  mutate(neighbors = st_intersects(geometry, transport_chi)) %>%
-  # don't allow a tract to be its own neighbor
-  mutate(neighbors = remove_self(index, neighbors)) %>%
-  # get median incomes for each neighbor
+  mutate(neighbors = st_contiguity(geometry, queen = TRUE)) %>%
   mutate(median_incomes = map(neighbors, ~transport_chi$median_income[.x])) %>%
   rowwise() %>%
   mutate(mean_neighbor_income = mean(median_incomes, na.rm = TRUE)) %>%
